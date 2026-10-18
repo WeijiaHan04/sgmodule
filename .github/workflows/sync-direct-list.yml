@@ -1,0 +1,30 @@
+# 每天从 GMOogway/shadowrocket-rules 同步直连名单，转换成小火箭 RULE-SET 格式（去掉策略字段）
+name: Sync direct list
+on:
+  schedule:
+    - cron: "30 1 * * *"   # 每天 UTC 01:30（北京时间 09:30），原作者约 08:10 更新
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build rules/direct.list
+        run: |
+          set -e
+          curl -fsSL https://raw.githubusercontent.com/GMOogway/shadowrocket-rules/master/sr_direct_list.module -o /tmp/m
+          ver=$(grep -m1 '^#!desc=' /tmp/m | sed 's/^#!desc=//')
+          grep -E '^(DOMAIN|DOMAIN-SUFFIX|DOMAIN-KEYWORD|URL-REGEX|IP-CIDR|IP-CIDR6),' /tmp/m | sed 's/,DIRECT$//' | awk '!seen[$0]++' > /tmp/body
+          n=$(wc -l < /tmp/body)
+          [ "$n" -gt 50000 ] || { echo "too few rules ($n), skip"; exit 1; }
+          mkdir -p rules
+          { echo "# NAME: direct"; echo "# 来源: GMOogway/shadowrocket-rules sr_direct_list.module ($ver)"; echo "# 用法: RULE-SET,<本文件 raw 地址>,DIRECT"; echo "# TOTAL: $n"; cat /tmp/body; } > rules/direct.list
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rules/direct.list
+          git diff --cached --quiet || git commit -m "sync direct.list $(date -u +%F)"
+          git push
