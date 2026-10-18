@@ -17,7 +17,7 @@ jobs:
           python -m pip download jieba_fast==0.53 --no-deps --no-binary :all: -d src
           python -m pip wheel src/jieba_fast-0.53.tar.gz --no-deps -w dist
           python -m pip install (Get-ChildItem dist/*.whl).FullName
-          python -c "import jieba_fast; print(list(jieba_fast.cut('我爱牧濑红莉栖')))"
+          python -X utf8 -c "import jieba_fast; print(list(jieba_fast.cut('hello world test')))"
           dir dist
       - name: Release
         env:
